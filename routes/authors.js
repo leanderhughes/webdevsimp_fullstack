@@ -2,11 +2,6 @@ const express = require('express');
 const router = express.Router();
 const Author = require('../models/author');
 
-app = express();
-
-app.use(express.urlencoded({limit:'10mb',extended:true}));
-app.use(express.json());
-
 //All authors
 
 router.get('/',async (req,res)=>{
