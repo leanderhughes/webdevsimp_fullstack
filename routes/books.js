@@ -1,19 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const fs = require('fs');
-const multer = require('multer');
-const path = require('path');
 const Author = require('../models/author');
 const Book = require('../models/book');
-const uploadPath = path.join('public',Book.coverImageBasePath);
-const imageMimeTypes = ['image/jpeg','image/png','image/gif'];
-const upload = multer({
-    dest:uploadPath,
-    fileFilter: (req,file,callback)=>{
-        callback(null,imageMimeTypes.includes(file.mimetype));
-    }
-});
-
 
 //All authors
 
@@ -47,24 +35,22 @@ router.get('/new',async (req,res)=>{
 });
 
 //Create author
-router.post('/', upload.single('cover') ,async (req,res)=>{
-    const {title,author,publishDate,pageCount,description} = req.body;
-    const params = {
+router.post('/', async (req,res)=>{
+    const {title,author,publishDate,pageCount,description,cover} = req.body;
+    const book = new Book({
         title,
         author,
         publishDate:new Date(publishDate),
         pageCount,
-        coverImageName: req.file ? req.file.filename : null,
         description
-    }
-    const book = new Book(params);
+    });
+    saveCover(book,cover);
     try{
         const newBook = await book.save();
         res.redirect('books');
     }
     catch(e){
        // console.log('Error',e);
-        book.coverImageName && removeBookCover(book.coverImageName);
         renderNewPage(res,book,true);
     }
 });
@@ -84,10 +70,19 @@ async function renderNewPage(res,book,hasError=false){
     }
 }
 
-function removeBookCover(fileName){
-    fs.unlink(path.join(uploadPath,fileName),err=>{
-        err && console.log(err);
-    });
+function saveCover(book, coverEncoded){
+    if(!coverEncoded){
+        return;
+    }
+    const cover = JSON.parse(coverEncoded);
+    if(!cover){
+        return;
+    }
+    if(!['image/jpeg','image/png','image/gif'].includes(cover.type)){
+        return;
+    }
+    book.coverImage = new Buffer.from(cover.data,'base64');
+    book.coverImageType = cover.type;
 }
 
 module.exports = router;
